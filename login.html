@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | BokinceX</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .message {
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .message.success {
+            color: green;
+        }
+        .message.error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <h2>Log In</h2>
+        <form id="loginForm">
+            <input type="email" id="login-email" placeholder="Email" required />
+            <input type="password" id="login-password" placeholder="Password" required />
+            <button type="submit">Login</button>
+        </form>
+        <p class="message" id="login-msg"></p>
+        <p style="text-align:center; margin-top: 1rem;">
+            Don't have an account? <a href="signup.html" style="color:#007bff;">Sign Up</a>
+        </p>
+    </div>
+
+    <script>
+              const loginForm = document.getElementById("loginForm");
+              loginForm.addEventListener("submit", function(e) {
+                  e.preventDefault();
+      
+                  const email = document.getElementById("login-email").value.trim();
+                  const password = document.getElementById("login-password").value.trim();
+                  const msg = document.getElementById("login-msg");
+      
+                  if (!email || !password) {
+                      msg.textContent = "Email and password are required!";
+                      msg.className = "message error";
+                      return;
+                  }
+      
+                  fetch("http://localhost/ecommerce-php/api/login.php", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email, password })
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          msg.textContent = data.success;
+                          msg.className = "message success";
+                          localStorage.setItem('username', data.user.username);
+      
+                          // Redirect based on is_admin status
+                          if (data.user.is_admin === 1) {
+                              window.location.href = "admin.html";
+                          } else {
+                              window.location.href = "index.html";
+                          }
+                      } else {
+                          msg.textContent = data.error || "Login failed. Please check your credentials.";
+                          msg.className = "message error";
+                      }
+                  })
+                  .catch(error => {
+                      msg.textContent = "Login failed. Try again later.";
+                      msg.className = "message error";
+                      console.error(error);
+                  });
+              });
+      
+              // Check if user is already logged in, redirect if so
+              fetch('http://localhost/ecommerce-php/api/session.php')
+                  .then(res => res.json())
+                  .then(user => {
+                      if (user.logged_in) {
+                          if (user.is_admin === 1) {
+                              window.location.href = "admin.html";
+                          } else {
+                              window.location.href = "index.html";
+                          }
+                      }
+                  })
+                  .catch(err => console.error("Session check error:", err));
+          </script>
+
+</body>
+</html>

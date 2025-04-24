@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Admin Panel | BokinceX</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .admin-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .admin-container h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        .admin-container input[type="text"],
+        .admin-container input[type="number"],
+        .admin-container textarea,
+        .admin-container input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .admin-container button[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .admin-container button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        .message.success {
+            color: green;
+        }
+        .message.error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <h2>Add New Product</h2>
+        <form id="addProductForm" enctype="multipart/form-data">
+            <input type="text" name="name" placeholder="Product Name" required />
+            <textarea name="description" placeholder="Product Description" required></textarea>
+            <input type="number" name="price" step="0.01" placeholder="Price" required />
+            <input type="file" name="image" accept="image/*" required />
+            <button type="submit">Add Product</button>
+        </form>
+
+        <p id="addProductMsg" class="message"></p>
+    </div>
+
+    <script>
+        const addProductForm = document.getElementById('addProductForm');
+        const msg = document.getElementById('addProductMsg');
+
+        addProductForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(addProductForm);
+
+            fetch('http://localhost/ecommerce-php/api/add_product.php', { // Using the corrected backend filename
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    msg.textContent = data.success;
+                    msg.className = "message success";
+                    addProductForm.reset();
+                } else {
+                    msg.textContent = data.error;
+                    msg.className = "message error";
+                }
+            })
+            .catch(error => {
+                msg.textContent = "Something went wrong.";
+                msg.className = "message error";
+                console.error(error);
+            });
+        });
+
+        // Basic check to ensure only logged-in admins can access (client-side only, backend must also enforce)
+        fetch('http://localhost/ecommerce-php/api/session.php')
+            .then(res => res.json())
+            .then(user => {
+                if (!user.logged_in || !user.is_admin) {
+                    window.location.href = "login.html"; // Redirect if not admin
+                }
+            })
+            .catch(err => {
+                console.error("Session check error:", err);
+                window.location.href = "login.html"; // Redirect on error as well
+            });
+    </script>
+
+</body>
+</html>

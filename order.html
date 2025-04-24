@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Details | BokinceX</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .order-details {
+            margin: 2rem;
+            font-family: Arial, sans-serif;
+        }
+        .order-details h2 {
+            text-align: center;
+            color: #333;
+        }
+        .status {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .order-info ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .order-info ul li {
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo">BokinceX</div>
+        <input type="text" placeholder="Search products..." class="search-bar" disabled />
+        <div class="nav-links" id="nav-links">
+        </div>
+    </header>
+
+    <section class="order-details">
+        <h2>Your Order</h2>
+        <div id="order-info">
+            <p>Loading order details...</p>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>© 2025 BokinceX. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Fetch session data to check if the user is logged in and update navbar
+        const navLinks = document.getElementById("nav-links");
+        let currentUser = null;
+
+        fetch("http://localhost/ecommerce-php/api/session.php")
+            .then(res => res.json())
+            .then(data => {
+                navLinks.innerHTML = '';
+                if (data.logged_in) {
+                    currentUser = { user_id: data.user_id, username: data.username };
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart</a>
+                        <span style="margin-left:10px;">👋 Welcome, ${data.username}</span>
+                        <a href="#" id="logout-btn">🚪 Logout</a>
+                    `;
+                    document.getElementById("logout-btn").onclick = () => {
+                        fetch("http://localhost/ecommerce-php/api/logout.php")
+                            .then(() => location.reload());
+                    };
+                } else {
+                    window.location.href = "login.html"; // Redirect if not logged in
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching session data:', err);
+                window.location.href = "login.html"; // Redirect on error as well
+            });
+
+        // Retrieve order ID from the query string
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        const orderInfoDiv = document.getElementById("order-info");
+
+        if (!orderId) {
+            orderInfoDiv.innerHTML = "<p class='error-message'>No order ID provided.</p>";
+        } else {
+            // Fetch order details by order_id from the backend
+            fetch(`http://localhost/ecommerce-php/api/order_details.php?order_id=${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        orderInfoDiv.innerHTML = `<p class='error-message'>${data.error}</p>`;
+                    } else if (data && data.length > 0) {
+                        const order = data[0]; // Assuming the API returns an array with one order
+                        orderInfoDiv.innerHTML = `
+                            <h3>Order ID: ${order.order_id || 'N/A'}</h3>
+                            <p>Order Date: ${new Date(order.order_date).toLocaleDateString()} ${new Date(order.order_date).toLocaleTimeString()}</p>
+                            <p>Status: <span class="status">${order.status || 'Processing'}</span></p>
+                            <h4>Order Items:</h4>
+                            <ul>
+                                ${order.items ? order.items.map(item => `
+                                    <li>${item.product_name} - $${parseFloat(item.price).toFixed(2)} x ${item.quantity}</li>
+                                `).join('') : 'No items in this order.'}
+                            </ul>
+                            <h4>Total: $${parseFloat(order.total_amount).toFixed(2)}</h4>
+                        `;
+                    } else {
+                        orderInfoDiv.innerHTML = "<p>Order not found.</p>";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching order details:", error);
+                    orderInfoDiv.innerHTML = "<p class='error-message'>Failed to load order details.</p>";
+                });
+        }
+    </script>
+
+</body>
+</html>

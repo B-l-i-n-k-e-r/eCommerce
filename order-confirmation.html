@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Confirmation | BokinceX</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .order-confirmation {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .order-confirmation h2 {
+            color: green;
+        }
+        .order-confirmation p {
+            font-size: 16px;
+            color: #333;
+        }
+        .btn-home {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 1rem;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .btn-home:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo">BokinceX</div>
+        <input type="text" placeholder="Search products..." class="search-bar" disabled />
+        <div class="nav-links" id="nav-links">
+            </div>
+    </header>
+
+    <section class="order-confirmation">
+        <h2>Your Order has been placed successfully!</h2>
+        <p>Order ID: <span id="order-id"></span></p>
+        <p>Thank you for shopping with us. We will notify you once your order is shipped.</p>
+        <a href="index.html" class="btn-home">Back to Home</a>
+    </section>
+
+    <footer class="footer">
+        <p>© 2025 BokinceX. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Fetch order confirmation data
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        document.getElementById("order-id").textContent = orderId || 'N/A'; // Handle case where order_id is not present
+
+        // Update navbar for logged-in users
+        const navLinks = document.getElementById("nav-links");
+
+        fetch("http://localhost/ecommerce-php/api/session.php")
+            .then(res => res.json())
+            .then(data => {
+                navLinks.innerHTML = '';
+                if (data.logged_in) {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart</a>
+                        <span style="margin-left:10px;">👋 Welcome, ${data.username}</span>
+                        <a href="#" id="logout-btn">🚪 Logout</a>
+                    `;
+                    document.getElementById("logout-btn").onclick = () => {
+                        fetch("http://localhost/ecommerce-php/api/logout.php")
+                            .then(() => location.reload());
+                    };
+                } else {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart (0)</a>
+                        <a href="login.html">Login</a>
+                        <a href="signup.html">Sign Up</a>
+                    `;
+                }
+            })
+            .catch(err => console.error('Error fetching session data:', err));
+    </script>
+
+</body>
+</html>

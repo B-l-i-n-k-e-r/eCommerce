@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BokinceX | Home</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo">BokinceX</div>
+        <input type="text" id="searchInput" placeholder="Search products..." class="search-bar" />
+        <div class="nav-links" id="nav-links">
+            </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-text">
+            <h1>Welcome to BokinceX</h1>
+            <p>Get the best deals on electronics, fashion, and more!</p>
+            <a href="products.html" class="btn">Shop Now</a>
+        </div>
+    </section>
+
+    <section class="products-section">
+        <h2>🔥 Featured Products</h2>
+        <div class="product-grid" id="product-grid">
+            </div>
+    </section>
+
+    <footer class="footer">
+        <p>© 2025 BokinceX. All rights reserved.</p>
+    </footer>
+
+    <script>
+        window.onload = function () {
+            const navLinks = document.getElementById("nav-links");
+            const productGrid = document.getElementById("product-grid");
+            const searchInput = document.getElementById("searchInput");
+            let currentUser = null;
+            let allProducts = [];
+
+            function updateNavbar(user, cartCount = 0) {
+                navLinks.innerHTML = ''; // Clear existing links
+                if (user) {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart (${cartCount})</a>
+                        <span style="margin-left:10px;">👋 Welcome, ${user.username}</span>
+                        <a href="#" id="logout-btn">🚪 Logout</a>
+                    `;
+                    document.getElementById("logout-btn").onclick = () => {
+                        fetch("http://localhost/ecommerce-php/api/logout.php")
+                            .then(() => location.reload());
+                    };
+                } else {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart (0)</a>
+                        <a href="login.html">Login</a>
+                        <a href="signup.html">Sign Up</a>
+                    `;
+                }
+            }
+
+            function displayProducts(products) {
+                productGrid.innerHTML = '';
+                if (products.length === 0) {
+                    productGrid.innerHTML = '<p>No products match your search.</p>';
+                    return;
+                }
+                products.forEach(product => {
+                    const div = document.createElement("div");
+                    div.className = "product-card";
+                    div.innerHTML = `
+                        <a href="product-details.html?product_id=${product.id}">
+                            <img src="assets/images/${product.image}" alt="${product.name}" onerror="this.src='assets/default.jpg';" />
+                            <h3>${product.name}</h3>
+                            <p>$${parseFloat(product.price).toFixed(2)}</p>
+                        </a>
+                        <button class="add-to-cart"
+                                data-id="${product.id}"
+                                data-name="${product.name}"
+                                data-price="${product.price}">
+                            Add to Cart
+                        </button>
+                    `;
+                    productGrid.appendChild(div);
+                });
+            }
+
+            // Check login session
+            fetch("http://localhost/ecommerce-php/api/session.php")
+                .then(res => res.json())
+                .then(data => {
+                    currentUser = data.logged_in ? { user_id: data.user_id, username: data.username } : null;
+                    updateNavbar(currentUser);
+                    if (currentUser) {
+                        fetch("http://localhost/ecommerce-php/api/cart.php")
+                            .then(res => res.json())
+                            .then(cart => {
+                                const count = Array.isArray(cart) ? cart.length : 0; // Assuming cart API returns an array
+                                updateNavbar(currentUser, count);
+                            })
+                            .catch(() => updateNavbar(currentUser));
+                    }
+                })
+                .catch(err => console.error("Session check error:", err));
+
+            // Fetch products
+            fetch("http://localhost/ecommerce-php/api/products.php")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        allProducts = data.products;
+                        displayProducts(allProducts);
+                    } else {
+                        productGrid.innerHTML = `<p>${data.error || 'No products found.'}</p>`;
+                    }
+                })
+                .catch(err => {
+                    console.error("Product fetch error:", err);
+                    productGrid.innerHTML = '<p>Failed to load products.</p>';
+                });
+
+            // Search functionality
+            searchInput.addEventListener("input", () => {
+                const keyword = searchInput.value.toLowerCase();
+                const filtered = allProducts.filter(p =>
+                    p.name.toLowerCase().includes(keyword)
+                );
+                displayProducts(filtered);
+            });
+
+            // Add to cart
+            document.addEventListener("click", function (e) {
+                if (e.target.classList.contains("add-to-cart")) {
+                    if (!currentUser) {
+                        alert("Please log in to add items to your cart.");
+                        window.location.href = "login.html";
+                        return;
+                    }
+
+                    const button = e.target;
+                    const product = {
+                        id: parseInt(button.dataset.id),
+                        name: button.dataset.name,
+                        price: parseFloat(button.dataset.price),
+                        quantity: 1
+                    };
+
+                    fetch("http://localhost/ecommerce-php/api/cart.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(product)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(`${product.name} added to cart!`);
+                            // Optionally update cart count in navbar here without full reload
+                            fetch("http://localhost/ecommerce-php/api/cart.php")
+                                .then(res => res.json())
+                                .then(updatedCart => {
+                                    const count = Array.isArray(updatedCart) ? updatedCart.length : 0;
+                                    updateNavbar(currentUser, count);
+                                })
+                                .catch(err => console.error("Error updating cart count:", err));
+                        } else {
+                            alert(data.error || "Failed to add to cart.");
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Cart error:", err);
+                        alert("There was an error adding the item to the cart.");
+                    });
+                }
+            });
+        };
+    </script>
+</body>
+</html>

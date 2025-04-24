@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Checkout | BokinceX</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .error-message {
+            color: red;
+            font-size: 0.9em;
+            margin-top: 0.2em;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo">BokinceX</div>
+        <input type="text" placeholder="Search products..." class="search-bar" disabled />
+        <div class="nav-links" id="nav-links">
+            </div>
+    </header>
+
+    <section class="checkout">
+        <h2>Checkout</h2>
+        <form id="checkout-form">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" placeholder="Enter your full name" required />
+
+            <label for="address">Shipping Address</label>
+            <input type="text" id="address" placeholder="Enter your shipping address" required />
+
+            <label for="payment-method">Choose Payment Method</label>
+            <select id="payment-method" required>
+                <option value="">Select Payment Method</option>
+                <option value="card">Credit/Debit Card</option>
+                <option value="paypal">PayPal</option>
+                <option value="mpesa">M-Pesa</option>
+                <option value="bank">Bank Transfer</option>
+            </select>
+            <div id="payment-method-error" class="error-message"></div>
+
+            <div id="card-fields" style="display: none;">
+                <label for="card-number">Credit/Debit Card Number</label>
+                <input type="text" id="card-number" placeholder="Enter your card number" pattern="[0-9]{13,19}" title="Enter a valid card number" />
+                <div id="card-number-error" class="error-message"></div>
+
+                <label for="expiry-date">Expiry Date (MM/YYYY)</label>
+                <input type="text" id="expiry-date" placeholder="MM/YYYY" pattern="(0[1-9]|1[0-2])\/[0-9]{4}" title="Enter expiry date in MM/YYYY format" />
+                <div id="expiry-date-error" class="error-message"></div>
+
+                <label for="cvv">CVV</label>
+                <input type="text" id="cvv" placeholder="Enter CVV" pattern="[0-9]{3,4}" title="Enter a valid CVV" />
+                <div id="cvv-error" class="error-message"></div>
+            </div>
+
+            <div id="paypal-fields" style="display: none;">
+                <label for="paypal-email">PayPal Email</label>
+                <input type="email" id="paypal-email" placeholder="Enter your PayPal email" type="email" />
+                <div id="paypal-email-error" class="error-message"></div>
+            </div>
+
+            <div id="mpesa-fields" style="display: none;">
+                <label for="mpesa-phone">M-Pesa Phone Number</label>
+                <input type="text" id="mpesa-phone" placeholder="Enter your M-Pesa phone number" pattern="[0-9]{10,12}" title="Enter a valid phone number" />
+                <div id="mpesa-phone-error" class="error-message"></div>
+            </div>
+
+            <div id="bank-fields" style="display: none;">
+                <label for="bank-account">Bank Account Number</label>
+                <input type="text" id="bank-account" placeholder="Enter your bank account number" required />
+                <div id="bank-account-error" class="error-message"></div>
+
+                <label for="bank-name">Bank Name</label>
+                <input type="text" id="bank-name" placeholder="Enter your bank name" required />
+                <div id="bank-name-error" class="error-message"></div>
+            </div>
+
+            <button type="submit" class="btn-checkout">Place Order</button>
+            <div id="checkout-message" class="message" style="display: none;"></div>
+        </form>
+    </section>
+
+    <footer class="footer">
+        <p>© 2025 BokinceX. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const navLinks = document.querySelector('.nav-links');
+        const paymentMethodSelect = document.getElementById("payment-method");
+        const cardFields = document.getElementById("card-fields");
+        const paypalFields = document.getElementById("paypal-fields");
+        const mpesaFields = document.getElementById("mpesa-fields");
+        const bankFields = document.getElementById("bank-fields");
+        const checkoutForm = document.getElementById("checkout-form");
+        const checkoutMessage = document.getElementById("checkout-message");
+        const errorMessages = {};
+        errorMessages['payment-method'] = document.getElementById('payment-method-error');
+        errorMessages['card-number'] = document.getElementById('card-number-error');
+        errorMessages['expiry-date'] = document.getElementById('expiry-date-error');
+        errorMessages['cvv'] = document.getElementById('cvv-error');
+        errorMessages['paypal-email'] = document.getElementById('paypal-email-error');
+        errorMessages['mpesa-phone'] = document.getElementById('mpesa-phone-error');
+        errorMessages['bank-account'] = document.getElementById('bank-account-error');
+        errorMessages['bank-name'] = document.getElementById('bank-name-error');
+
+        // Step 1: Session Check
+        fetch('http://localhost/ecommerce-php/api/session.php')
+            .then(res => res.json())
+            .then(user => {
+                navLinks.innerHTML = '';
+                if (!user.logged_in) {
+                    window.location.href = "login.html"; // Redirect if not logged in
+                } else {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart</a>
+                        <span style="margin-left:10px;">👋 Welcome, ${user.username}</span>
+                        <a href="#" id="logout-btn">🚪 Logout</a>
+                    `;
+                    document.getElementById("logout-btn").onclick = () => {
+                        fetch("http://localhost/ecommerce-php/api/logout.php")
+                            .then(() => location.reload());
+                    };
+                }
+            });
+
+        // Step 2: Handle Payment Method Change
+        paymentMethodSelect.addEventListener("change", function() {
+            cardFields.style.display = "none";
+            paypalFields.style.display = "none";
+            mpesaFields.style.display = "none";
+            bankFields.style.display = "none";
+
+            // Clear payment method errors
+            for (const key in errorMessages) {
+                if (key !== 'payment-method') {
+                    errorMessages[key].textContent = '';
+                }
+            }
+            errorMessages['payment-method'].textContent = '';
+
+            const selectedPaymentMethod = this.value;
+            if (selectedPaymentMethod === "card") {
+                cardFields.style.display = "block";
+            } else if (selectedPaymentMethod === "paypal") {
+                paypalFields.style.display = "block";
+            } else if (selectedPaymentMethod === "mpesa") {
+                mpesaFields.style.display = "block";
+            } else if (selectedPaymentMethod === "bank") {
+                bankFields.style.display = "block";
+            }
+        });
+
+        // Step 3: Form submission
+        checkoutForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById("name").value.trim();
+            const address = document.getElementById("address").value.trim();
+            const paymentMethod = paymentMethodSelect.value;
+            let paymentDetails = {};
+            let isValid = true;
+
+            // Basic validation for main fields
+            if (!name) { isValid = false; }
+            if (!address) { isValid = false; }
+            if (!paymentMethod) {
+                isValid = false;
+                errorMessages['payment-method'].textContent = 'Please select a payment method.';
+            } else {
+                errorMessages['payment-method'].textContent = '';
+            }
+
+            // Payment method specific validation
+            if (paymentMethod === "card") {
+                const cardNumberInput = document.getElementById("card-number");
+                const expiryDateInput = document.getElementById("expiry-date");
+                const cvvInput = document.getElementById("cvv");
+                paymentDetails.cardNumber = cardNumberInput.value.trim();
+                paymentDetails.expiryDate = expiryDateInput.value.trim();
+                paymentDetails.cvv = cvvInput.value.trim();
+                if (!cardNumberInput.checkValidity()) {
+                    isValid = false;
+                    errorMessages['card-number'].textContent = 'Please enter a valid card number.';
+                } else {
+                    errorMessages['card-number'].textContent = '';
+                }
+                if (!expiryDateInput.value) {
+                    isValid = false;
+                    errorMessages['expiry-date'].textContent = 'Please enter the expiry date (MM/YYYY).';
+                } else {
+                    errorMessages['expiry-date'].textContent = '';
+                }
+                if (!cvvInput.checkValidity()) {
+                    isValid = false;
+                    errorMessages['cvv'].textContent = 'Please enter a valid CVV.';
+                } else {
+                    errorMessages['cvv'].textContent = '';
+                }
+            } else if (paymentMethod === "paypal") {
+                const paypalEmailInput = document.getElementById("paypal-email");
+                paymentDetails.paypalEmail = paypalEmailInput.value.trim();
+                if (!paypalEmailInput.checkValidity()) {
+                    isValid = false;
+                    errorMessages['paypal-email'].textContent = 'Please enter a valid PayPal email.';
+                } else {
+                    errorMessages['paypal-email'].textContent = '';
+                }
+            } else if (paymentMethod === "mpesa") {
+                const mpesaPhoneInput = document.getElementById("mpesa-phone");
+                paymentDetails.mpesaPhone = mpesaPhoneInput.value.trim();
+                if (!mpesaPhoneInput.checkValidity()) {
+                    isValid = false;
+                    errorMessages['mpesa-phone'].textContent = 'Please enter a valid M-Pesa phone number.';
+                } else {
+                    errorMessages['mpesa-phone'].textContent = '';
+                }
+            } else if (paymentMethod === "bank") {
+                const bankAccountInput = document.getElementById("bank-account");
+                const bankNameInput = document.getElementById("bank-name");
+                paymentDetails.bankAccount = bankAccountInput.value.trim();
+                paymentDetails.bankName = bankNameInput.value.trim();
+                if (!paymentDetails.bankAccount) {
+                    isValid = false;
+                    errorMessages['bank-account'].textContent = 'Please enter the bank account number.';
+                } else {
+                    errorMessages['bank-account'].textContent = '';
+                }
+                if (!paymentDetails.bankName) {
+                    isValid = false;
+                    errorMessages['bank-name'].textContent = 'Please enter the bank name.';
+                } else {
+                    errorMessages['bank-name'].textContent = '';
+                }
+            }
+
+            if (!isValid) {
+                alert("Please correct the errors in the form.");
+                return;
+            }
+
+            // Step 4: Send order details to the backend
+            fetch("http://localhost/ecommerce-php/api/place_order.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: name,
+                    address: address,
+                    paymentMethod: paymentMethod,
+                    paymentDetails: paymentDetails
+                    // You might also want to send cart items here if your backend doesn't fetch them from the session
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    checkoutMessage.textContent = "Order placed successfully! Order ID: " + data.order_id;
+                    checkoutMessage.className = "message success";
+                    checkoutMessage.style.display = "block";
+                    setTimeout(() => {
+                        window.location.href = `order-confirmation.html?order_id=${data.order_id}`;
+                    }, 1500);
+                } else {
+                    checkoutMessage.textContent = data.error || "Failed to place order. Please try again.";
+                    checkoutMessage.className = "message error";
+                    checkoutMessage.style.display = "block";
+                }
+            })
+            .catch(error => {
+                console.error("Checkout error:", error);
+                checkoutMessage.textContent = "An error occurred during checkout. Please try again later.";
+                checkoutMessage.className = "message error";
+                checkoutMessage.style.display = "block";
+            });
+        });
+    </script>
+
+</body>
+</html>

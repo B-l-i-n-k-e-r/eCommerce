@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product | BokinceX</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .product-details {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+      text-align: center;
+    }
+    .product-details img {
+      max-width: 100%;
+      height: auto;
+      margin: 1rem 0;
+    }
+    #add-to-cart {
+      padding: 10px 20px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    #add-to-cart:hover {
+      background: #218838;
+    }
+    #quantity {
+      width: 60px;
+      padding: 5px;
+      margin: 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="logo">BokinceX</div>
+    <input type="text" placeholder="Search products..." class="search-bar" />
+    <div class="nav-links" id="nav-links">
+      <a href="cart.html">🛒 Cart</a>
+      <a href="login.html">Login</a>
+      <a href="signup.html">Sign Up</a>
+    </div>
+  </header>
+
+  <section class="product-details">
+    <h2 id="product-name">Loading product...</h2>
+    <img id="product-image" src="" alt="Product Image" />
+    <p id="product-description"></p>
+    <p><strong>Price: $<span id="product-price">0.00</span></strong></p>
+    <input type="number" id="quantity" min="1" value="1" />
+    <button id="add-to-cart">Add to Cart</button>
+  </section>
+
+  <footer class="footer">
+    <p>© 2025 BokinceX. All rights reserved.</p>
+  </footer>
+
+  <script>
+    // Session-aware navbar
+    const navLinks = document.getElementById("nav-links");
+
+    fetch("http://localhost/ecommerce-php/api/session_check.php")
+      .then(res => res.json())
+      .then(data => {
+        if (data.loggedIn) {
+          navLinks.innerHTML = `
+            <a href="cart.html">🛒 Cart</a>
+            <span style="margin-left:10px;">👋 ${data.user.username}</span>
+            <a href="#" id="logout-btn">🚪 Logout</a>
+          `;
+          document.getElementById("logout-btn").onclick = () => {
+            fetch("http://localhost/ecommerce-php/api/logout.php")
+              .then(() => location.reload());
+          };
+        }
+      });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get("product_id");
+    const addToCartBtn = document.getElementById("add-to-cart");
+
+    if (!productId) {
+      document.querySelector(".product-details").innerHTML = `<p>No product selected.</p>`;
+    } else {
+      fetch(`http://localhost/ecommerce-php/api/products.php?product_id=${productId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            document.querySelector(".product-details").innerHTML = `<p>${data.error}</p>`;
+            return;
+          }
+
+          document.getElementById("product-name").textContent = data.name;
+          document.getElementById("product-image").src = `assets/images/${data.image}`;
+          document.getElementById("product-image").alt = data.name;
+          document.getElementById("product-description").textContent = data.description;
+          document.getElementById("product-price").textContent = data.price;
+        })
+        .catch(error => {
+          document.querySelector(".product-details").innerHTML = "<p>Error fetching product details.</p>";
+          console.error(error);
+        });
+
+      addToCartBtn.addEventListener("click", function () {
+        const quantity = parseInt(document.getElementById("quantity").value);
+        if (isNaN(quantity) || quantity < 1) {
+          alert("Please enter a valid quantity.");
+          return;
+        }
+
+        fetch("http://localhost/ecommerce-php/api/cart.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: productId, quantity })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert("Product added to cart!");
+          } else {
+            alert(data.error);
+          }
+        })
+        .catch(error => {
+          alert("Error adding product to cart.");
+          console.error(error);
+        });
+      });
+    }
+  </script>
+
+</body>
+</html>

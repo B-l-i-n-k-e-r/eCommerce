@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Product Details | BokinceX</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .product-details {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+            text-align: center;
+        }
+        .product-details img {
+            max-width: 100%;
+            height: auto;
+            margin: 1rem 0;
+        }
+        #add-to-cart {
+            padding: 10px 20px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        #add-to-cart:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo">BokinceX</div>
+        <input type="text" placeholder="Search products..." class="search-bar" />
+        <div class="nav-links" id="nav-links">
+        </div>
+    </header>
+
+    <section class="product-details">
+        <h2 id="product-name">Loading product...</h2>
+        <img id="product-image" src="" alt="Product Image" onerror="this.src='assets/default.jpg';" />
+        <p id="product-description"></p>
+        <p><strong>Price: $<span id="product-price">0.00</span></strong></p>
+        <button id="add-to-cart">Add to Cart</button>
+        <div id="add-to-cart-message" class="message" style="display: none;"></div>
+    </section>
+
+    <footer class="footer">
+        <p>© 2025 BokinceX. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Navbar session check
+        const navLinks = document.getElementById("nav-links");
+
+        fetch("http://localhost/ecommerce-php/api/session.php")
+            .then(res => res.json())
+            .then(data => {
+                navLinks.innerHTML = '';
+                if (data.logged_in) {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart</a>
+                        <span style="margin-left:10px;">👋 ${data.username}</span>
+                        <a href="#" id="logout-btn">🚪 Logout</a>
+                    `;
+                    document.getElementById("logout-btn").onclick = () => {
+                        fetch("http://localhost/ecommerce-php/api/logout.php")
+                            .then(() => location.reload());
+                    };
+                } else {
+                    navLinks.innerHTML = `
+                        <a href="cart.html">🛒 Cart (0)</a>
+                        <a href="login.html">Login</a>
+                        <a href="signup.html">Sign Up</a>
+                    `;
+                }
+            })
+            .catch(err => console.error('Error fetching session data:', err));
+
+        // Fetch product by ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get("product_id");
+        const addToCartBtn = document.getElementById("add-to-cart");
+        const addToCartMessage = document.getElementById("add-to-cart-message");
+
+        if (productId) {
+            fetch(`http://localhost/ecommerce-php/api/products.php?product_id=${productId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.querySelector(".product-details").innerHTML = `<p class='error-message'>${data.error}</p>`;
+                        return;
+                    }
+
+                    document.getElementById("product-name").textContent = data.name;
+                    document.getElementById("product-image").src = `assets/images/${data.image}`;
+                    document.getElementById("product-image").alt = data.name;
+                    document.getElementById("product-description").textContent = data.description;
+                    document.getElementById("product-price").textContent = parseFloat(data.price).toFixed(2);
+                })
+                .catch(error => {
+                    document.querySelector(".product-details").innerHTML = "<p class='error-message'>Error fetching product details.</p>";
+                    console.error(error);
+                });
+
+            // Add to Cart logic
+            addToCartBtn.addEventListener("click", function () {
+                fetch("http://localhost/ecommerce-php/api/session.php")
+                    .then(res => res.json())
+                    .then(user => {
+                        if (!user.logged_in) {
+                            alert("Please log in to add items to your cart.");
+                            window.location.href = "login.html";
+                            return;
+                        }
+
+                        const quantity = 1;
+                        fetch("http://localhost/ecommerce-php/api/cart.php", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: productId, quantity })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            addToCartMessage.style.display = "block";
+                            if (data.success) {
+                                addToCartMessage.textContent = "Product added to cart!";
+                                addToCartMessage.className = "message success";
+                                setTimeout(() => {
+                                    addToCartMessage.style.display = "none";
+                                }, 1500);
+                            } else {
+                                addToCartMessage.textContent = data.error || "Failed to add to cart.";
+                                addToCartMessage.className = "message error";
+                            }
+                        })
+                        .catch(error => {
+                            addToCartMessage.style.display = "block";
+                            addToCartMessage.textContent = "Error adding product to cart.";
+                            addToCartMessage.className = "message error";
+                            console.error(error);
+                        });
+                    })
+                    .catch(err => {
+                        console.error("Session check error:", err);
+                        alert("Could not verify login status. Please try again.");
+                    });
+            });
+        } else {
+            document.querySelector(".product-details").innerHTML = `<p class='error-message'>No product selected.</p>`;
+        }
+    </script>
+
+</body>
+</html>
